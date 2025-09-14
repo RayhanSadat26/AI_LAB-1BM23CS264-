@@ -1,0 +1,109 @@
+import heapq
+
+# Goal state for reference
+GOAL_STATE = ((1, 2, 3),
+              (4, 5, 6),
+              (7, 8, 0))
+
+# Directions (up, down, left, right) to move the blank tile
+DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+def is_goal(state):
+    return state == GOAL_STATE
+
+def find_blank(state):
+    for i in range(3):
+        for j in range(3):
+            if state[i][j] == 0:
+                return i, j
+    return None
+
+def swap_positions(state, pos1, pos2):
+    state_list = [list(row) for row in state]
+    x1, y1 = pos1
+    x2, y2 = pos2
+    state_list[x1][y1], state_list[x2][y2] = state_list[x2][y2], state_list[x1][y1]
+    return tuple(tuple(row) for row in state_list)
+
+def neighbors(state):
+    x, y = find_blank(state)
+    result = []
+    for dx, dy in DIRECTIONS:
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < 3 and 0 <= ny < 3:
+            new_state = swap_positions(state, (x, y), (nx, ny))
+            result.append(new_state)
+    return result
+
+# Heuristic 1: Number of tiles out of place (ignoring blank)
+def heuristic_misplaced(state):
+    count = 0
+    for i in range(3):
+        for j in range(3):
+            if state[i][j] != 0 and state[i][j] != GOAL_STATE[i][j]:
+                count += 1
+    return count
+
+# Heuristic 2: Manhattan distance
+def heuristic_manhattan(state):
+    total_distance = 0
+    for i in range(3):
+        for j in range(3):
+            tile = state[i][j]
+            if tile != 0:
+                # Find tile position in goal state
+                for x in range(3):
+                    for y in range(3):
+                        if GOAL_STATE[x][y] == tile:
+                            total_distance += abs(x - i) + abs(y - j)
+                            break
+    return total_distance
+
+def a_star(start_state, heuristic_func):
+    open_list = []
+    heapq.heappush(open_list, (0 + heuristic_func(start_state), 0, start_state, []))  # (f, g, state, path)
+    closed_set = set()
+
+    while open_list:
+        f, g, current, path = heapq.heappop(open_list)
+
+        if is_goal(current):
+            return path + [current]
+
+        if current in closed_set:
+            continue
+        closed_set.add(current)
+
+        for neighbor in neighbors(current):
+            if neighbor not in closed_set:
+                new_g = g + 1
+                new_f = new_g + heuristic_func(neighbor)
+                heapq.heappush(open_list, (new_f, new_g, neighbor, path + [current]))
+
+    return None  # No solution found
+
+def print_state(state):
+    for row in state:
+        print(' '.join(str(x) if x != 0 else ' ' for x in row))
+    print()
+
+# Example usage:
+start = ((1, 2, 3),
+         (0, 4, 6),
+         (7, 5, 8))
+
+print("Solving with Misplaced Tiles Heuristic:")
+solution1 = a_star(start, heuristic_misplaced)
+if solution1:
+    for step in solution1:
+        print_state(step)
+else:
+    print("No solution found.")
+
+print("Solving with Manhattan Distance Heuristic:")
+solution2 = a_star(start, heuristic_manhattan)
+if solution2:
+    for step in solution2:
+        print_state(step)
+else:
+    print("No solution found.")
